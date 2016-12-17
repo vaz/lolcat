@@ -30,10 +30,7 @@ module Lol
   STRIP_ANSI = Regexp.compile '\e\[[\d;]*[m|K]', nil
 
   def self.rainbow(freq, i)
-     red   = Math.sin(freq*i + 0) * 127 + 128
-     green = Math.sin(freq*i + 2*Math::PI/3) * 127 + 128
-     blue  = Math.sin(freq*i + 4*Math::PI/3) * 127 + 128
-     "#%02X%02X%02X" % [ red, green, blue ]
+    hexcode(*rgb(freq, i))
   end
 
   def self.cat(fd, opts={})
@@ -57,13 +54,29 @@ module Lol
 
   private
 
+  def self.rgb(freq, i)
+    red   = Math.sin(freq*i + 0) * 127 + 128
+    green = Math.sin(freq*i + 2*Math::PI/3) * 127 + 128
+    blue  = Math.sin(freq*i + 4*Math::PI/3) * 127 + 128
+    [ red, green, blue ].map(&:to_i)
+  end
+
+  def self.hexcode(red, green, blue)
+    "#%02X%02X%02X" % [red, green, blue]
+  end
+
   def self.println_plain(str, defaults={}, opts={})
     opts.merge!(defaults)
     str.chomp.chars.each_with_index do |c,i|
-      code = rainbow(opts[:freq], opts[:os]+i/opts[:spread])
-      tc   = (opts[:truecolor] ? '=' : '')
-      print Paint[c, *[ (:black if opts[:invert]),
-                        "#{tc}#{code}" ].compact ]
+      args = [ opts[:freq], opts[:os]+i/opts[:spread] ]
+      if opts[:truecolor]
+        fmt  = "\033[%sm"
+        code = [ opts[:invert] ? 48 : 38, 2, *rgb(*args) ] * ';'
+        print [ fmt % code, c, fmt % 0 ].join
+      else
+        hex = rainbow(*args)
+        print Paint[c, *[ (:black if opts[:invert]), hex ].compact ]
+      end
     end
   end
 
